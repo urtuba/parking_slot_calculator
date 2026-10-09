@@ -1,5 +1,5 @@
 CC ?= cc
-CFLAGS = -std=c11 -Wall -Wextra -Wpedantic -O2
+CFLAGS = -std=c11 -Wall -Wextra -Wpedantic -Werror -O2
 
 all: parking_slot_calculator
 

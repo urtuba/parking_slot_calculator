@@ -7,10 +7,15 @@
  * Finds the parking slot that is furthest from the nearest parked car.
  */
 
+#include <ctype.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_SIZE 50
+#define LINE_SIZE 64
 
 /* Manhattan distance from slot (row, col) to the nearest parked car. */
 static int distance_to_nearest_car(int row, int col, int size,
@@ -30,33 +35,6 @@ static int distance_to_nearest_car(int row, int col, int size,
         }
     }
     return nearest;
-}
-
-/* Reads the lot size, asking again while it is above MAX_SIZE. */
-static int read_size(void)
-{
-    int size = 0;
-
-    printf("Size: ");
-    scanf("%d", &size);
-    while (size > MAX_SIZE) {
-        printf("max size must be %d\n", MAX_SIZE);
-        printf("Size: ");
-        scanf("%d", &size);
-    }
-    return size;
-}
-
-/* Reads the car locations (1-based) and marks them in the lot. */
-static void read_cars(int cars, int lot[][MAX_SIZE])
-{
-    for (int i = 0; i < cars; i++) {
-        int x = 0, y = 0;
-
-        printf("Locations: ");
-        scanf("%d %d", &x, &y);
-        lot[x - 1][y - 1] = 1;
-    }
 }
 
 /*
@@ -83,22 +61,126 @@ static void find_best_slot(int size, int lot[][MAX_SIZE],
     }
 }
 
+static void fail_on_end_of_input(void)
+{
+    fprintf(stderr, "error: unexpected end of input\n");
+    exit(1);
+}
+
+/*
+ * Parses exactly `count` whole numbers separated by white space.
+ * Returns 1 on success, 0 for anything else (text, too few or too many).
+ */
+static int parse_numbers(const char *text, int count, long values[])
+{
+    for (int i = 0; i < count; i++) {
+        char *end;
+
+        errno = 0;
+        values[i] = strtol(text, &end, 10);
+        if (end == text || errno == ERANGE) {
+            return 0;
+        }
+        if (*end != '\0' && !isspace((unsigned char)*end)) {
+            return 0;
+        }
+        text = end;
+    }
+    while (isspace((unsigned char)*text)) {
+        text++;
+    }
+    return *text == '\0';
+}
+
+/*
+ * Prints the prompt and reads one line. Returns 1 if the line holds exactly
+ * `count` whole numbers, 0 if not. Ends the program at end of input.
+ */
+static int read_numbers(const char *prompt, int count, long values[])
+{
+    char line[LINE_SIZE];
+    int too_long = 0;
+
+    printf("%s", prompt);
+    if (fgets(line, sizeof line, stdin) == NULL) {
+        fail_on_end_of_input();
+    }
+    if (strchr(line, '\n') == NULL && strlen(line) == sizeof line - 1) {
+        /* The line does not fit: drop the rest of it. */
+        int c;
+
+        too_long = 1;
+        while ((c = getchar()) != '\n' && c != EOF) {
+        }
+    }
+    return !too_long && parse_numbers(line, count, values);
+}
+
+static int read_size(void)
+{
+    long value;
+
+    for (;;) {
+        if (read_numbers("Size: ", 1, &value) && value >= 1
+            && value <= MAX_SIZE) {
+            return (int)value;
+        }
+        fprintf(stderr, "error: size must be one whole number from 1 to %d\n",
+                MAX_SIZE);
+    }
+}
+
+static int read_car_count(int size)
+{
+    long value;
+
+    for (;;) {
+        if (read_numbers("Cars: ", 1, &value) && value >= 0
+            && value <= (long)size * size) {
+            return (int)value;
+        }
+        fprintf(stderr, "error: cars must be one whole number from 0 to %d\n",
+                size * size);
+    }
+}
+
+/* Reads one free slot (1-based X Y) and marks it in the lot. */
+static void read_car(int size, int lot[][MAX_SIZE])
+{
+    long xy[2];
+
+    for (;;) {
+        if (!read_numbers("Locations: ", 2, xy) || xy[0] < 1 || xy[0] > size
+            || xy[1] < 1 || xy[1] > size) {
+            fprintf(stderr,
+                    "error: location must be two whole numbers X Y, "
+                    "each from 1 to %d\n",
+                    size);
+        } else if (lot[xy[0] - 1][xy[1] - 1] == 1) {
+            fprintf(stderr, "error: slot %ld %ld already has a car\n",
+                    xy[0], xy[1]);
+        } else {
+            lot[xy[0] - 1][xy[1] - 1] = 1;
+            return;
+        }
+    }
+}
+
 int main(void)
 {
     int lot[MAX_SIZE][MAX_SIZE] = {{0}};
-    int cars = 0;
     int size = read_size();
+    int cars = read_car_count(size);
     int best_row, best_col;
 
-    printf("Cars: ");
-    scanf("%d", &cars);
-
-    if (cars >= size * size) {
+    if (cars == size * size) {
         printf("No slot found\n");
         return 0;
     }
 
-    read_cars(cars, lot);
+    for (int i = 0; i < cars; i++) {
+        read_car(size, lot);
+    }
     find_best_slot(size, lot, &best_row, &best_col);
     printf("Best Slot Found In: %d %d\r\n", best_row + 1, best_col + 1);
     return 0;
