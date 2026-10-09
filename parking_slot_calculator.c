@@ -101,7 +101,7 @@ static int read_numbers(const char *prompt, int count, long values[])
     char line[LINE_SIZE];
     int too_long = 0;
 
-    printf("%s", prompt);
+    fprintf(stderr, "%s", prompt);
     if (fgets(line, sizeof line, stdin) == NULL) {
         fail_on_end_of_input();
     }
@@ -182,6 +182,6 @@ int main(void)
         read_car(size, lot);
     }
     find_best_slot(size, lot, &best_row, &best_col);
-    printf("Best Slot Found In: %d %d\r\n", best_row + 1, best_col + 1);
+    printf("Best Slot Found In: %d %d\n", best_row + 1, best_col + 1);
     return 0;
 }
