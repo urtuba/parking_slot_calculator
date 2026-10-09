@@ -1,112 +1,105 @@
-#include <stdio.h>
 /*
-		Author: Samed Kahyaoglu
-		Github: urtuba
-		  Date: 20 April 2018
-*/
+ * Author: Samed Kahyaoglu
+ * Github: urtuba
+ *   Date: 20 April 2018
+ * Restored: 2026
+ *
+ * Finds the parking slot that is furthest from the nearest parked car.
+ */
 
-//the function which calculates the shortest distance to nearest car.
+#include <limits.h>
+#include <stdio.h>
 
-int shortest_distance(int pos_x, int pos_y, int actual_size, int parking_area[][50])
+#define MAX_SIZE 50
+
+/* Manhattan distance from slot (row, col) to the nearest parked car. */
+static int distance_to_nearest_car(int row, int col, int size,
+                                   int lot[][MAX_SIZE])
 {
-	int distance = 100, manhattan = 0, x = 0, y = 0;
-	int x_difference = 0, y_difference = 0;
+    int nearest = INT_MAX;
 
-	for(x = 0; x < actual_size; x++){
-		for(y = 0; y < actual_size; y++){
+    for (int x = 0; x < size; x++) {
+        for (int y = 0; y < size; y++) {
+            int dx = row > x ? row - x : x - row;
+            int dy = col > y ? col - y : y - col;
+            int distance = dx + dy;
 
-			if(pos_x > x){
-				x_difference = pos_x - x;
-			}else{
-				x_difference = x - pos_x;
-			}
-
-			if(pos_y > y){
-				y_difference = pos_y - y;
-			}else{
-				y_difference = y - pos_y;
-			}
-
-			manhattan = x_difference + y_difference;
-
-			if(parking_area[x][y] == 1 && distance > manhattan){distance = manhattan;}
-		}
-	}
-	return distance;
+            if (lot[x][y] == 1 && distance < nearest) {
+                nearest = distance;
+            }
+        }
+    }
+    return nearest;
 }
 
-
-int main()
+/* Reads the lot size, asking again while it is above MAX_SIZE. */
+static int read_size(void)
 {
+    int size = 0;
 
-//creation of the matrix with 0's
+    printf("Size: ");
+    scanf("%d", &size);
+    while (size > MAX_SIZE) {
+        printf("max size must be %d\n", MAX_SIZE);
+        printf("Size: ");
+        scanf("%d", &size);
+    }
+    return size;
+}
 
-	int a = 0, b = 0; //for general counters or temporary variables
-	const int MAXSIZE = 50;
-	int parking_area[MAXSIZE][MAXSIZE];
+/* Reads the car locations (1-based) and marks them in the lot. */
+static void read_cars(int cars, int lot[][MAX_SIZE])
+{
+    for (int i = 0; i < cars; i++) {
+        int x = 0, y = 0;
 
-	for(a = 0; a < MAXSIZE; a++){
-		for(b = 0; b < MAXSIZE; b++){
-			parking_area[a][b] = 0;
-		}
-	}
+        printf("Locations: ");
+        scanf("%d %d", &x, &y);
+        lot[x - 1][y - 1] = 1;
+    }
+}
 
-//arranging the matrix with size and cars.
+/*
+ * Finds the slot with the largest distance to the nearest car.
+ * The first such slot in row-major order wins ties.
+ */
+static void find_best_slot(int size, int lot[][MAX_SIZE],
+                           int *best_row, int *best_col)
+{
+    int best_distance = 0;
 
-	int actual_size = 0;
-	int cars = 0;
-	printf("Size: ");
-	scanf("%d", &actual_size);
+    *best_row = 0;
+    *best_col = 0;
+    for (int x = 0; x < size; x++) {
+        for (int y = 0; y < size; y++) {
+            int distance = distance_to_nearest_car(x, y, size, lot);
 
-	while(actual_size > 50){
-		printf("max size must be 50\n");
-		printf("Size: ");
-		scanf("%d", &actual_size);
-	}
+            if (distance > best_distance) {
+                *best_row = x;
+                *best_col = y;
+                best_distance = distance;
+            }
+        }
+    }
+}
 
-	printf("Cars: ");
-	scanf("%d", &cars);
+int main(void)
+{
+    int lot[MAX_SIZE][MAX_SIZE] = {{0}};
+    int cars = 0;
+    int size = read_size();
+    int best_row, best_col;
 
-	if(cars >= actual_size*actual_size){
-		printf("No slot found\n");
-		return 0;
-	}else{
-		int i = 0;
-		while(i < cars){
+    printf("Cars: ");
+    scanf("%d", &cars);
 
-			printf("Locations: ");
-			scanf("%d %d", &a, &b);
-			a = a - 1;
-			b = b - 1;
-			parking_area[a][b]=1;
-			i++;
-		}
-	}
+    if (cars >= size * size) {
+        printf("No slot found\n");
+        return 0;
+    }
 
-//recording distance scores as a matrix.
-
-	int availability_map[MAXSIZE][MAXSIZE];
-	for(a = 0; a < actual_size; a++){
-		for(b = 0; b < actual_size; b++){
-
-			availability_map[a][b] = shortest_distance(a, b, actual_size, parking_area);
-		}
-	}
-
-//choosing best position.
-
-	int best_position_x = 0, best_position_y = 0, temp = 0;
-	for(a = 0; a < actual_size; a++){
-		for(b = 0; b < actual_size; b++){
-			if(availability_map[a][b] > temp){
-
-				best_position_x = a;
-				best_position_y = b;
-				temp = availability_map[a][b];
-			}
-		}
-	}
-
-	printf("Best Slot Found In: %d %d\r\n", best_position_x + 1, best_position_y + 1);
-	return 0;
+    read_cars(cars, lot);
+    find_best_slot(size, lot, &best_row, &best_col);
+    printf("Best Slot Found In: %d %d\r\n", best_row + 1, best_col + 1);
+    return 0;
 }
