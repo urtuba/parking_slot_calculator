@@ -1,0 +1,3 @@
+parking_slot_calculator
+*.o
+tests/tmp/
